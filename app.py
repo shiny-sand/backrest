@@ -4,6 +4,7 @@ import socket
 import json
 import subprocess
 import time
+import string
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -266,6 +267,10 @@ def warm_real_to_virtual(node_path: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _looks_like_hex(s: str) -> bool:
+    return bool(s) and all(c in string.hexdigits for c in s)
+
+
 def parse_restic_daily_log(text: str) -> Dict[str, Any]:
     """
     Parse a restic daily backup log:
@@ -273,6 +278,11 @@ def parse_restic_daily_log(text: str) -> Dict[str, Any]:
       - snapshot_time
       - stats_lines
       - duration
+
+    Your logs typically include:
+      - "snapshot <ID> saved"
+      - processed files lines
+      - maybe a "Date:" or "Time:" header from the wrapper script
     """
     snapshot_id: Optional[str] = None
     snapshot_time: Optional[datetime] = None
@@ -282,9 +292,11 @@ def parse_restic_daily_log(text: str) -> Dict[str, Any]:
     for line in text.splitlines():
         line_stripped = line.strip()
 
+        # Old style (if you ever add "ID: <id>" to logs)
         if line_stripped.startswith("ID: "):
             snapshot_id = line_stripped.split("ID:", 1)[1].strip()
 
+        # Wrapper header "Time: <iso>"
         if line_stripped.startswith("Time: "):
             ts = line_stripped.split("Time:", 1)[1].strip()
             try:
@@ -292,7 +304,9 @@ def parse_restic_daily_log(text: str) -> Dict[str, Any]:
             except Exception:
                 pass
 
+        # Wrapper header "Date: 2025-11-30T23:27:10 CET"
         if line_stripped.startswith("Date:"):
+            # Take the first token after "Date:" as the ISO part and ignore the TZ label
             ts = line_stripped.split("Date:", 1)[1].strip().split(" ")[0]
             try:
                 dt_naive = datetime.fromisoformat(ts)
@@ -300,11 +314,22 @@ def parse_restic_daily_log(text: str) -> Dict[str, Any]:
             except Exception:
                 pass
 
+        # Native restic summary line: "snapshot df513fb2 saved"
+        if "snapshot " in line_stripped and " saved" in line_stripped:
+            # Extract token immediately after "snapshot"
+            parts_after = line_stripped.split("snapshot", 1)[1].strip().split()
+            if parts_after:
+                cand = parts_after[0].strip()
+                if _looks_like_hex(cand):
+                    snapshot_id = cand
+
+        # Processed files line (stats and duration)
         if "processed" in line_stripped and "files" in line_stripped:
             stats_lines.append(line_stripped)
             if " in " in line_stripped:
                 duration = line_stripped.split(" in ", 1)[1].strip()
 
+        # Added-to-repo summary
         if "Added to the repository:" in line_stripped:
             stats_lines.append(line_stripped)
 
@@ -431,9 +456,9 @@ def collect_job_context(job_key: str) -> Optional[Dict[str, Any]]:
     # Short preview for the card
     preview_text = read_file_tail(latest["path"], CARD_LOG_PREVIEW_BYTES) or ""
 
-    # Use the full log for parsing for restic daily jobs so we always see the
-    # snapshot ID / stats, even if they are near the top of the log.
-    if cfg["parser"] == "restic_daily":
+    # For restic logs (daily + weekly), always parse the full log so we
+    # do not miss snapshot lines or "no errors were found".
+    if cfg["parser"] in ("restic_daily", "restic_weekly"):
         parse_source = read_file_full(latest["path"]) or preview_text
     else:
         parse_source = preview_text
@@ -688,6 +713,10 @@ def load_snapshot_path(
 
     The UI works with "virtual" paths starting at '/', which map to the
     real snapshot paths under WARM_SOURCE_ROOT.
+
+    This now parses both restic's current ls --json format (fields at
+    top level) and the older nested "node" format, so we actually get
+    names, types and paths.
     """
     real_path = warm_virtual_to_real(path)
 
@@ -709,10 +738,17 @@ def load_snapshot_path(
                 f"Line snippet: {line[:400]}"
             )
 
+        # Support both formats:
+        # - Newer: keys at top level: { "struct_type":"node", "type":"file", "name":"...", ... }
+        # - Older: { "struct_type":"node", "node": { "type":"file", "name":"...", ... } }
         if item.get("struct_type") != "node":
             continue
 
-        node = item.get("node", {})
+        if "node" in item and isinstance(item["node"], dict):
+            node = item["node"]
+        else:
+            node = item
+
         node_type = node.get("type", "?")
         node_name = node.get("name", "")
         node_path = node.get("path", "")

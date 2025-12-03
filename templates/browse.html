@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ page_title }}</title>
+    <title>Backrest – Browse snapshots</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         :root {
@@ -186,7 +186,7 @@
 
         .card {
             background: linear-gradient(145deg, #020617 0, #020c1b 50%, #020617 100%);
-            border-radius: 12px;
+            border-radius: var(--radius-card);
             border: 1px solid var(--border-soft);
             box-shadow: var(--shadow-card);
             padding: 14px 14px 12px;
@@ -212,42 +212,6 @@
         .card-subtitle {
             font-size: 11px;
             color: var(--text-muted);
-        }
-
-        .status-pill {
-            padding: 2px 9px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border: 1px solid #1f2937;
-        }
-
-        .status-pill.ok {
-            color: var(--ok);
-            background: var(--ok-soft);
-            border-color: rgba(74,222,128,0.6);
-        }
-
-        .status-pill.error {
-            color: var(--danger);
-            background: var(--danger-soft);
-            border-color: rgba(248,113,113,0.6);
-        }
-
-        .status-pill.unknown {
-            color: var(--unknown);
-            background: var(--unknown-soft);
-            border-color: rgba(250,204,21,0.5);
-        }
-
-        .status-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 999px;
-            background: currentColor;
         }
 
         .section-label {
@@ -296,7 +260,45 @@
             color: var(--text-muted);
         }
 
-        /* Path bar + contents */
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .top-row-main {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .top-row-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .top-row-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .chip-link {
+            padding: 3px 9px;
+            border-radius: var(--radius-chip);
+            border: 1px solid rgba(148,163,184,0.35);
+            font-size: 10px;
+            color: #e5e7eb;
+            background: rgba(15,23,42,0.8);
+        }
+
+        .chip-link:hover {
+            text-decoration: none;
+            border-color: rgba(148,163,184,0.7);
+            background: rgba(15,23,42,0.95);
+        }
+
         .path-bar {
             display: flex;
             align-items: center;
@@ -342,6 +344,24 @@
             border-color: rgba(148,163,184,0.8);
         }
 
+        .btn-restore {
+            padding: 3px 8px;
+            font-size: 10px;
+        }
+
+        .path-up {
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+
+        .path-up a {
+            color: var(--text-muted);
+        }
+
+        .path-up a:hover {
+            color: var(--accent);
+        }
+
         .contents-area {
             border-radius: 10px;
             border: 1px solid #111827;
@@ -353,17 +373,6 @@
         .contents-placeholder {
             font-size: 11px;
             color: var(--text-muted);
-        }
-
-        .contents-log {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            line-height: 1.4;
-            color: #cbd5f5;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            max-height: 420px;
-            overflow-y: auto;
         }
 
         .error-box {
@@ -379,94 +388,81 @@
             margin-bottom: 6px;
         }
 
-        /* Log history mode */
-        .log-list {
-            max-height: 520px;
-            overflow-y: auto;
-            padding-right: 4px;
-        }
-
-        .log-item {
-            border-radius: 8px;
-            padding: 6px 8px;
-            margin-bottom: 4px;
-            cursor: pointer;
+        .flash {
+            margin-bottom: 10px;
+            padding: 6px 10px;
+            border-radius: 999px;
             font-size: 11px;
-            border: 1px solid transparent;
         }
 
-        .log-item:hover {
-            background: rgba(15,23,42,0.8);
-            border-color: #1e293b;
+        .flash-info {
+            background: rgba(37,99,235,0.2);
+            border: 1px solid rgba(37,99,235,0.5);
+            color: #bfdbfe;
         }
 
-        .log-item.active {
-            background: rgba(15,23,42,0.95);
-            border-color: rgba(56,189,248,0.7);
+        .flash-error {
+            background: var(--danger-soft);
+            border: 1px solid rgba(248,113,113,0.7);
+            color: #fecaca;
         }
 
-        .log-name {
+        table.contents-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        table.contents-table th,
+        table.contents-table td {
+            padding: 5px 6px;
+            text-align: left;
+        }
+
+        table.contents-table thead {
+            background: rgba(15,23,42,0.9);
+        }
+
+        table.contents-table th {
+            font-weight: 500;
+            color: #9ca3af;
+            border-bottom: 1px solid #111827;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 10px;
+        }
+
+        table.contents-table tbody tr:nth-child(even) {
+            background: rgba(15,23,42,0.55);
+        }
+
+        table.contents-table tbody tr:nth-child(odd) {
+            background: rgba(15,23,42,0.35);
+        }
+
+        table.contents-table tbody tr:hover {
+            background: rgba(30,64,175,0.35);
+        }
+
+        table.contents-table td {
+            border-bottom: 1px solid #020617;
+            color: #e5e7eb;
+        }
+
+        .entry-name a {
+            color: #e5e7eb;
+        }
+
+        .entry-name a:hover {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .entry-type {
             font-family: var(--font-mono);
             font-size: 10px;
-            color: #e5e7eb;
-            margin-bottom: 2px;
-        }
-
-        .log-meta {
-            font-size: 10px;
             color: var(--text-muted);
         }
-
-        .badge-job {
-            font-size: 10px;
-            border-radius: 999px;
-            padding: 2px 8px;
-            border: 1px solid rgba(148,163,184,0.4);
-            background: rgba(15,23,42,0.9);
-            color: #9ca3af;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-
-        .top-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-
-        .top-row-main {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .top-row-title {
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .top-row-sub {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-
-        .chip-link {
-            padding: 3px 9px;
-            border-radius: 999px;
-            border: 1px solid rgba(148,163,184,0.35);
-            font-size: 10px;
-            color: #e5e7eb;
-            background: rgba(15,23,42,0.8);
-        }
-
-        .chip-link:hover {
-            text-decoration: none;
-            border-color: rgba(148,163,184,0.7);
-            background: rgba(15,23,42,0.95);
-        }
-
     </style>
 </head>
 <body>
@@ -477,22 +473,16 @@
         <div class="brand-left">
             <div class="brand-logo">Br</div>
             <div class="brand-meta">
-                <div class="brand-title">{{ brand_name }} – backup-dashboard</div>
+                <div class="brand-title">Backrest</div>
                 <div class="brand-sub">
-                    Host: {{ host_name }} · Repo: {{ repo_label }}
+                    Restic snapshot browser · Repo: {{ repo }}
                 </div>
             </div>
         </div>
         <div class="meta-right">
             <div class="meta-pill">
-                <span class="meta-pill-label">Generated</span>
-                <span>
-                    {% if generated_at %}
-                        {{ generated_at.strftime('%Y-%m-%d %H:%M:%S %z') }}
-                    {% else %}
-                        n/a
-                    {% endif %}
-                </span>
+                <span class="meta-pill-label">Browse</span>
+                <span>Warm tier snapshots</span>
             </div>
         </div>
     </header>
@@ -505,214 +495,174 @@
         </a>
         <a href="{{ url_for('browse') }}" class="nav-link active">
             <div>Browse snapshots</div>
-            <span>History & contents</span>
+            <span>Warm tier</span>
         </a>
     </nav>
 
-    {% set in_log_mode = (job is defined and job) %}
-
-    {% if in_log_mode %}
-        <!-- Log history mode -->
-        <div class="layout">
-            <!-- Left: log index -->
-            <aside class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Log history</div>
-                        <div class="card-subtitle">
-                            {% if job_label %}
-                                {{ job_label }}
-                            {% else %}
-                                Job: {{ job }}
-                            {% endif %}
-                        </div>
-                    </div>
-                    <span class="badge-job">
-                        {{ job or 'unknown' }}
-                    </span>
-                </div>
-
-                {% if log_error %}
-                    <div class="error-box">{{ log_error }}</div>
-                {% endif %}
-
-                <div class="section-label">Available logs</div>
-                <div class="log-list">
-                    {% if log_index %}
-                        {% for item in log_index %}
-                            {% set is_active = selected_log and selected_log.path == item.path %}
-                            <a href="{{ url_for('browse', job=job, path=item.path) }}" class="log-item{% if is_active %} active{% endif %}">
-                                <div class="log-name">
-                                    {{ item.basename or item.path }}
-                                </div>
-                                <div class="log-meta">
-                                    {{ item.age_str or 'n/a' }} · {{ item.size_str or '' }}
-                                </div>
-                            </a>
-                        {% endfor %}
-                    {% else %}
-                        <div class="contents-placeholder">
-                            No logs found for this job.
-                        </div>
-                    {% endif %}
-                </div>
-            </aside>
-
-            <!-- Right: selected log -->
-            <main class="card">
-                <div class="top-row">
-                    <div class="top-row-main">
-                        <div class="top-row-title">
-                            {% if selected_log %}
-                                {{ selected_log.basename or selected_log.path }}
-                            {% else %}
-                                Log contents
-                            {% endif %}
-                        </div>
-                        <div class="top-row-sub">
-                            {% if selected_log %}
-                                {{ selected_log.path }}
-                            {% elif log_index and log_index|length > 0 %}
-                                Select a log on the left to view its contents.
-                            {% else %}
-                                No log selected.
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div>
-                        <a class="chip-link" href="{{ url_for('browse') }}">Back to snapshots</a>
-                    </div>
-                </div>
-
-                <div class="contents-area">
-                    {% if log_lines %}
-                        <div class="contents-log">
-                            {{ log_lines | join('\n') }}
-                        </div>
-                    {% elif selected_log and selected_log.raw %}
-                        <div class="contents-log">
-                            {{ selected_log.raw }}
-                        </div>
-                    {% elif log_error %}
-                        <div class="contents-placeholder">
-                            {{ log_error }}
-                        </div>
-                    {% else %}
-                        <div class="contents-placeholder">
-                            No log selected.
-                        </div>
-                    {% endif %}
-                </div>
-            </main>
-        </div>
-
-    {% else %}
-        <!-- Snapshot browser mode -->
-        <div class="layout">
-            <!-- Left: snapshots -->
-            <aside class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Snapshots</div>
-                        <div class="card-subtitle">
-                            {% if snapshot_error %}
-                                Failed to load snapshots
-                            {% else %}
-                                {% if snapshots %}
-                                    {{ snapshots|length }} snapshot{{ 's' if snapshots|length != 1 else '' }} found
-                                {% else %}
-                                    No snapshots loaded
-                                {% endif %}
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-
-                {% if snapshot_error %}
-                    <div class="error-box">{{ snapshot_error }}</div>
-                {% endif %}
-
-                <div class="snapshot-list">
-                    {% if snapshots %}
-                        {% for snap in snapshots %}
-                            {% set active = (selected_snapshot_id is defined and selected_snapshot_id == snap.id) %}
-                            <a href="{{ url_for('browse', snapshot=snap.id, path=current_path or '/') }}"
-                               class="snapshot-item{% if active %} active{% endif %}">
-                                <div class="snapshot-id">{{ snap.id }}</div>
-                                <div class="snapshot-meta">
-                                    {% if snap.time %}
-                                        {{ snap.time.strftime('%Y-%m-%d %H:%M:%S') }}
-                                    {% else %}
-                                        n/a
-                                    {% endif %}
-                                    · host: {{ snap.host or 'n/a' }}
-                                </div>
-                            </a>
-                        {% endfor %}
-                    {% elif not snapshot_error %}
-                        <div class="contents-placeholder">
-                            No snapshots available in this repository.
-                        </div>
-                    {% endif %}
-                </div>
-            </aside>
-
-            <!-- Right: contents -->
-            <main class="card">
-                <div class="top-row">
-                    <div class="top-row-main">
-                        <div class="top-row-title">Contents</div>
-                        <div class="top-row-sub">
-                            {% if selected_snapshot_id %}
-                                Snapshot: {{ selected_snapshot_id }}
-                            {% else %}
-                                Select a snapshot on the left to explore its contents.
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div>
-                        <a class="chip-link" href="{{ url_for('index') }}">Back to dashboard</a>
-                    </div>
-                </div>
-
-                <form method="get" class="path-bar">
-                    {% if selected_snapshot_id %}
-                        <input type="hidden" name="snapshot" value="{{ selected_snapshot_id }}">
-                    {% endif %}
-                    <label for="path">Path</label>
-                    <input id="path"
-                           name="path"
-                           class="path-input"
-                           value="{{ current_path or '/' }}">
-                    <button type="submit" class="btn">Load</button>
-                </form>
-
-                {% if contents_error %}
-                    <div class="error-box">{{ contents_error }}</div>
-                {% endif %}
-
-                <div class="contents-area">
-                    {% if entries %}
-                        <div class="contents-log">
-                            {{ entries | join('\n') }}
-                        </div>
-                    {% elif contents_text %}
-                        <div class="contents-log">
-                            {{ contents_text }}
-                        </div>
-                    {% else %}
-                        <div class="contents-placeholder">
-                            {% if selected_snapshot_id %}
-                                No entries for this snapshot/path.
-                            {% else %}
-                                No snapshot selected.
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                </div>
-            </main>
+    {% if message %}
+        <div class="flash flash-info">
+            {{ message }}
         </div>
     {% endif %}
+
+    <div class="layout">
+        <!-- Left: snapshot list -->
+        <aside class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Snapshots</div>
+                    <div class="card-subtitle">
+                        {% if snapshot_error %}
+                            Failed to load snapshots
+                        {% else %}
+                            {% if snapshots %}
+                                {{ snapshots|length }} snapshot{{ 's' if snapshots|length != 1 else '' }} found
+                            {% else %}
+                                No snapshots loaded
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if snapshot_error %}
+                <div class="error-box">{{ snapshot_error }}</div>
+            {% endif %}
+
+            <div class="snapshot-list">
+                {% if snapshots %}
+                    {% for snap in snapshots %}
+                        {% set is_active = (selected_snapshot == snap.id) %}
+                        <a href="{{ url_for('browse', snapshot=snap.id, path='/') }}"
+                           class="snapshot-item{% if is_active %} active{% endif %}">
+                            <div class="snapshot-id">{{ snap.id }}</div>
+                            <div class="snapshot-meta">
+                                {% if snap.time %}
+                                    {{ snap.time.strftime('%Y-%m-%d %H:%M:%S') }}
+                                {% else %}
+                                    n/a
+                                {% endif %}
+                                · host: {{ snap.host or 'n/a' }}
+                            </div>
+                        </a>
+                    {% endfor %}
+                {% elif not snapshot_error %}
+                    <div class="contents-placeholder">
+                        No snapshots available in this repository.
+                    </div>
+                {% endif %}
+            </div>
+        </aside>
+
+        <!-- Right: contents -->
+        <main class="card">
+            {% set current_path = path or '/' %}
+            <div class="top-row">
+                <div class="top-row-main">
+                    <div class="top-row-title">Contents</div>
+                    <div class="top-row-sub">
+                        {% if selected_snapshot %}
+                            Snapshot: {{ selected_snapshot }} · Path: {{ current_path }}
+                        {% else %}
+                            Select a snapshot on the left to explore its contents.
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <a class="chip-link" href="{{ url_for('index') }}">Back to dashboard</a>
+                </div>
+            </div>
+
+            <form method="get" class="path-bar">
+                {% if selected_snapshot %}
+                    <input type="hidden" name="snapshot" value="{{ selected_snapshot }}">
+                {% endif %}
+                <label for="path">Path</label>
+                <input id="path"
+                       name="path"
+                       class="path-input"
+                       value="{{ current_path }}">
+                <button type="submit" class="btn">Load</button>
+            </form>
+
+            {% if path_error %}
+                <div class="error-box">{{ path_error }}</div>
+            {% endif %}
+
+            <div class="contents-area">
+                {% if selected_snapshot %}
+                    {% if current_path and current_path != '/' %}
+                        {% set cleaned = current_path.strip('/') %}
+                        {% if cleaned %}
+                            {% set parts = cleaned.split('/') %}
+                            {% if parts|length > 1 %}
+                                {% set parent = '/' + '/'.join(parts[:-1]) %}
+                            {% else %}
+                                {% set parent = '/' %}
+                            {% endif %}
+                            <div class="path-up">
+                                <a href="{{ url_for('browse', snapshot=selected_snapshot, path=parent) }}">← Up one level</a>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if entries %}
+                        <table class="contents-table">
+                            <thead>
+                            <tr>
+                                <th style="width: 12%;">Type</th>
+                                <th style="width: 52%;">Name</th>
+                                <th style="width: 18%;">Size</th>
+                                <th style="width: 18%;">Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for entry in entries %}
+                                <tr>
+                                    <td class="entry-type">
+                                        {% if entry.type == 'dir' %}
+                                            dir
+                                        {% else %}
+                                            file
+                                        {% endif %}
+                                    </td>
+                                    <td class="entry-name">
+                                        {% if entry.type == 'dir' %}
+                                            <a href="{{ url_for('browse', snapshot=selected_snapshot, path=entry.path) }}">
+                                                {{ entry.name }}/
+                                            </a>
+                                        {% else %}
+                                            {{ entry.name }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ entry.size_display }}
+                                    </td>
+                                    <td>
+                                        <form method="post" action="{{ url_for('restore') }}" style="margin:0;">
+                                            <input type="hidden" name="snapshot_id" value="{{ selected_snapshot }}">
+                                            <input type="hidden" name="path" value="{{ entry.path }}">
+                                            <input type="hidden" name="entry_type" value="{{ entry.type }}">
+                                            <button type="submit" class="btn btn-restore">Restore</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="contents-placeholder">
+                            No entries for this snapshot/path.
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="contents-placeholder">
+                        No snapshot selected.
+                    </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
 
 </div>
 </body>

@@ -13,3 +13,6 @@ logs/
 restore/
 restore_tmp/
 *.bak
+node_modules
+package-lock.json
+package.json

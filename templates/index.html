@@ -292,11 +292,18 @@
             font-size: 10px;
             line-height: 1.4;
             color: #cbd5f5;
-            max-height: 165px;
+            max-height: 140px;
             overflow-y: auto;
             overflow-x: hidden;
             white-space: pre-wrap;
             word-wrap: break-word;
+            /* Hide scrollbars to avoid "double scrollbar" feeling */
+            scrollbar-width: none;          /* Firefox */
+            -ms-overflow-style: none;       /* IE/Edge */
+        }
+
+        .log-preview::-webkit-scrollbar {
+            display: none;                  /* Chrome/Safari */
         }
 
         .log-footer {
@@ -472,7 +479,7 @@
         <div class="brand-left">
             <div class="brand-logo">Br</div>
             <div class="brand-meta">
-                <div class="brand-title">{{ brand_name }} – backup-dashboard</div>
+                <div class="brand-title">{{ brand_name }}</div>
                 <div class="brand-sub">
                     Host: {{ host_name }} · Repo: {{ repo_label }}
                 </div>
@@ -498,7 +505,7 @@
             <div>Dashboard</div>
             <span>Overview</span>
         </a>
-        <a href="{{ url_for('browse') }}" class="nav-link">        
+        <a href="{{ url_for('browse') }}" class="nav-link">
             <div>Browse snapshots</div>
             <span>Log history</span>
         </a>
@@ -904,4 +911,3 @@
 </div>
 </body>
 </html>
-
