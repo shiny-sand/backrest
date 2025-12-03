@@ -12,3 +12,4 @@ logs/
 *.log
 restore/
 restore_tmp/
+*.bak
