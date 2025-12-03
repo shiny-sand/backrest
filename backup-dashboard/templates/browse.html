@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-main: #020617;
+            --bg-card: #020c1b;
+            --bg-card-soft: #020817;
+            --border-soft: #1f2937;
+            --text-main: #e5e7eb;
+            --text-muted: #9ca3af;
+            --accent: #38bdf8;
+            --accent-soft: rgba(56,189,248,0.2);
+            --danger: #f97373;
+            --danger-soft: rgba(248,113,113,0.15);
+            --ok: #4ade80;
+            --ok-soft: rgba(74,222,128,0.18);
+            --unknown: #facc15;
+            --unknown-soft: rgba(250,204,21,0.12);
+            --shadow-card: 0 18px 40px rgba(15,23,42,0.8);
+            --radius-card: 12px;
+            --radius-badge: 999px;
+            --radius-chip: 999px;
+            --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --font-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle at top, #0b1220 0, #020617 36%, #000 100%);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .page {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 24px 32px 40px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .brand-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            background: radial-gradient(circle at 30% 20%, #38bdf8 0, #0ea5e9 32%, #0f172a 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 18px;
+            box-shadow: 0 12px 30px rgba(8,47,73,0.8);
+        }
+
+        .brand-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .brand-title {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .meta-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .meta-pill {
+            padding: 3px 10px;
+            border-radius: 999px;
+            border: 1px solid #1e293b;
+            background: rgba(15,23,42,0.9);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .meta-pill-label {
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            color: #64748b;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .nav-link {
+            font-size: 13px;
+            padding: 7px 14px;
+            border-radius: 999px;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+        }
+
+        .nav-link.active {
+            background: rgba(15,23,42,0.95);
+            border-color: #1f2937;
+            color: var(--text-main);
+            box-shadow: 0 12px 30px rgba(15,23,42,0.9);
+        }
+
+        .nav-link span {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #6b7280;
+        }
+
+        @media (max-width: 768px) {
+            .page {
+                padding: 16px 16px 24px;
+            }
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .meta-right {
+                align-items: flex-start;
+            }
+            nav {
+                flex-wrap: wrap;
+            }
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 280px minmax(0, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 960px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: linear-gradient(145deg, #020617 0, #020c1b 50%, #020617 100%);
+            border-radius: 12px;
+            border: 1px solid var(--border-soft);
+            box-shadow: var(--shadow-card);
+            padding: 14px 14px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .card-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .status-pill {
+            padding: 2px 9px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid #1f2937;
+        }
+
+        .status-pill.ok {
+            color: var(--ok);
+            background: var(--ok-soft);
+            border-color: rgba(74,222,128,0.6);
+        }
+
+        .status-pill.error {
+            color: var(--danger);
+            background: var(--danger-soft);
+            border-color: rgba(248,113,113,0.6);
+        }
+
+        .status-pill.unknown {
+            color: var(--unknown);
+            background: var(--unknown-soft);
+            border-color: rgba(250,204,21,0.5);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: currentColor;
+        }
+
+        .section-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        /* Snapshot list */
+        .snapshot-list {
+            max-height: 520px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .snapshot-item {
+            border-radius: 8px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            border: 1px solid transparent;
+        }
+
+        .snapshot-item:hover {
+            background: rgba(15,23,42,0.8);
+            border-color: #1e293b;
+        }
+
+        .snapshot-item.active {
+            background: rgba(15,23,42,0.95);
+            border-color: rgba(56,189,248,0.7);
+        }
+
+        .snapshot-id {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: #e5e7eb;
+            margin-bottom: 2px;
+        }
+
+        .snapshot-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* Path bar + contents */
+        .path-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .path-bar label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .path-input {
+            flex: 1;
+            min-width: 0;
+            background: rgba(15,23,42,0.9);
+            border-radius: 999px;
+            border: 1px solid #111827;
+            padding: 5px 10px;
+            font-size: 11px;
+            color: var(--text-main);
+            font-family: var(--font-mono);
+        }
+
+        .path-input:focus {
+            outline: none;
+            border-color: rgba(56,189,248,0.8);
+            box-shadow: 0 0 0 1px rgba(56,189,248,0.4);
+        }
+
+        .btn {
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,0.35);
+            background: rgba(15,23,42,0.9);
+            color: #e5e7eb;
+            font-size: 11px;
+            padding: 4px 10px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: rgba(15,23,42,1);
+            border-color: rgba(148,163,184,0.8);
+        }
+
+        .contents-area {
+            border-radius: 10px;
+            border: 1px solid #111827;
+            background: radial-gradient(circle at top left, #020617 0, #020617 30%, #020617 100%);
+            padding: 8px 10px;
+            min-height: 260px;
+        }
+
+        .contents-placeholder {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .contents-log {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            line-height: 1.4;
+            color: #cbd5f5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+
+        .error-box {
+            background: var(--danger-soft);
+            border-radius: 8px;
+            border: 1px solid rgba(248,113,113,0.7);
+            padding: 8px 10px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: #fecaca;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-bottom: 6px;
+        }
+
+        /* Log history mode */
+        .log-list {
+            max-height: 520px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .log-item {
+            border-radius: 8px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            border: 1px solid transparent;
+        }
+
+        .log-item:hover {
+            background: rgba(15,23,42,0.8);
+            border-color: #1e293b;
+        }
+
+        .log-item.active {
+            background: rgba(15,23,42,0.95);
+            border-color: rgba(56,189,248,0.7);
+        }
+
+        .log-name {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: #e5e7eb;
+            margin-bottom: 2px;
+        }
+
+        .log-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .badge-job {
+            font-size: 10px;
+            border-radius: 999px;
+            padding: 2px 8px;
+            border: 1px solid rgba(148,163,184,0.4);
+            background: rgba(15,23,42,0.9);
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .top-row-main {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .top-row-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .top-row-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .chip-link {
+            padding: 3px 9px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,0.35);
+            font-size: 10px;
+            color: #e5e7eb;
+            background: rgba(15,23,42,0.8);
+        }
+
+        .chip-link:hover {
+            text-decoration: none;
+            border-color: rgba(148,163,184,0.7);
+            background: rgba(15,23,42,0.95);
+        }
+
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- Header / brand -->
+    <header>
+        <div class="brand-left">
+            <div class="brand-logo">Br</div>
+            <div class="brand-meta">
+                <div class="brand-title">{{ brand_name }} – backup-dashboard</div>
+                <div class="brand-sub">
+                    Host: {{ host_name }} · Repo: {{ repo_label }}
+                </div>
+            </div>
+        </div>
+        <div class="meta-right">
+            <div class="meta-pill">
+                <span class="meta-pill-label">Generated</span>
+                <span>
+                    {% if generated_at %}
+                        {{ generated_at.strftime('%Y-%m-%d %H:%M:%S %z') }}
+                    {% else %}
+                        n/a
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Nav -->
+    <nav>
+        <a href="{{ url_for('index') }}" class="nav-link">
+            <div>Dashboard</div>
+            <span>Overview</span>
+        </a>
+        <a href="{{ url_for('browse') }}" class="nav-link active">
+            <div>Browse snapshots</div>
+            <span>History & contents</span>
+        </a>
+    </nav>
+
+    {% set in_log_mode = (job is defined and job) %}
+
+    {% if in_log_mode %}
+        <!-- Log history mode -->
+        <div class="layout">
+            <!-- Left: log index -->
+            <aside class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Log history</div>
+                        <div class="card-subtitle">
+                            {% if job_label %}
+                                {{ job_label }}
+                            {% else %}
+                                Job: {{ job }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <span class="badge-job">
+                        {{ job or 'unknown' }}
+                    </span>
+                </div>
+
+                {% if log_error %}
+                    <div class="error-box">{{ log_error }}</div>
+                {% endif %}
+
+                <div class="section-label">Available logs</div>
+                <div class="log-list">
+                    {% if log_index %}
+                        {% for item in log_index %}
+                            {% set is_active = selected_log and selected_log.path == item.path %}
+                            <a href="{{ url_for('browse', job=job, path=item.path) }}" class="log-item{% if is_active %} active{% endif %}">
+                                <div class="log-name">
+                                    {{ item.basename or item.path }}
+                                </div>
+                                <div class="log-meta">
+                                    {{ item.age_str or 'n/a' }} · {{ item.size_str or '' }}
+                                </div>
+                            </a>
+                        {% endfor %}
+                    {% else %}
+                        <div class="contents-placeholder">
+                            No logs found for this job.
+                        </div>
+                    {% endif %}
+                </div>
+            </aside>
+
+            <!-- Right: selected log -->
+            <main class="card">
+                <div class="top-row">
+                    <div class="top-row-main">
+                        <div class="top-row-title">
+                            {% if selected_log %}
+                                {{ selected_log.basename or selected_log.path }}
+                            {% else %}
+                                Log contents
+                            {% endif %}
+                        </div>
+                        <div class="top-row-sub">
+                            {% if selected_log %}
+                                {{ selected_log.path }}
+                            {% elif log_index and log_index|length > 0 %}
+                                Select a log on the left to view its contents.
+                            {% else %}
+                                No log selected.
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <a class="chip-link" href="{{ url_for('browse') }}">Back to snapshots</a>
+                    </div>
+                </div>
+
+                <div class="contents-area">
+                    {% if log_lines %}
+                        <div class="contents-log">
+                            {{ log_lines | join('\n') }}
+                        </div>
+                    {% elif selected_log and selected_log.raw %}
+                        <div class="contents-log">
+                            {{ selected_log.raw }}
+                        </div>
+                    {% elif log_error %}
+                        <div class="contents-placeholder">
+                            {{ log_error }}
+                        </div>
+                    {% else %}
+                        <div class="contents-placeholder">
+                            No log selected.
+                        </div>
+                    {% endif %}
+                </div>
+            </main>
+        </div>
+
+    {% else %}
+        <!-- Snapshot browser mode -->
+        <div class="layout">
+            <!-- Left: snapshots -->
+            <aside class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Snapshots</div>
+                        <div class="card-subtitle">
+                            {% if snapshot_error %}
+                                Failed to load snapshots
+                            {% else %}
+                                {% if snapshots %}
+                                    {{ snapshots|length }} snapshot{{ 's' if snapshots|length != 1 else '' }} found
+                                {% else %}
+                                    No snapshots loaded
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {% if snapshot_error %}
+                    <div class="error-box">{{ snapshot_error }}</div>
+                {% endif %}
+
+                <div class="snapshot-list">
+                    {% if snapshots %}
+                        {% for snap in snapshots %}
+                            {% set active = (selected_snapshot_id is defined and selected_snapshot_id == snap.id) %}
+                            <a href="{{ url_for('browse', snapshot=snap.id, path=current_path or '/') }}"
+                               class="snapshot-item{% if active %} active{% endif %}">
+                                <div class="snapshot-id">{{ snap.id }}</div>
+                                <div class="snapshot-meta">
+                                    {% if snap.time %}
+                                        {{ snap.time.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    {% else %}
+                                        n/a
+                                    {% endif %}
+                                    · host: {{ snap.host or 'n/a' }}
+                                </div>
+                            </a>
+                        {% endfor %}
+                    {% elif not snapshot_error %}
+                        <div class="contents-placeholder">
+                            No snapshots available in this repository.
+                        </div>
+                    {% endif %}
+                </div>
+            </aside>
+
+            <!-- Right: contents -->
+            <main class="card">
+                <div class="top-row">
+                    <div class="top-row-main">
+                        <div class="top-row-title">Contents</div>
+                        <div class="top-row-sub">
+                            {% if selected_snapshot_id %}
+                                Snapshot: {{ selected_snapshot_id }}
+                            {% else %}
+                                Select a snapshot on the left to explore its contents.
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <a class="chip-link" href="{{ url_for('index') }}">Back to dashboard</a>
+                    </div>
+                </div>
+
+                <form method="get" class="path-bar">
+                    {% if selected_snapshot_id %}
+                        <input type="hidden" name="snapshot" value="{{ selected_snapshot_id }}">
+                    {% endif %}
+                    <label for="path">Path</label>
+                    <input id="path"
+                           name="path"
+                           class="path-input"
+                           value="{{ current_path or '/' }}">
+                    <button type="submit" class="btn">Load</button>
+                </form>
+
+                {% if contents_error %}
+                    <div class="error-box">{{ contents_error }}</div>
+                {% endif %}
+
+                <div class="contents-area">
+                    {% if entries %}
+                        <div class="contents-log">
+                            {{ entries | join('\n') }}
+                        </div>
+                    {% elif contents_text %}
+                        <div class="contents-log">
+                            {{ contents_text }}
+                        </div>
+                    {% else %}
+                        <div class="contents-placeholder">
+                            {% if selected_snapshot_id %}
+                                No entries for this snapshot/path.
+                            {% else %}
+                                No snapshot selected.
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </main>
+        </div>
+    {% endif %}
+
+</div>
+</body>
+</html>

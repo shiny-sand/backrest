@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+.envrc
+
+# Logs and runtime stuff
+logs/
+*.log
+restore/
+restore_tmp/

@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-main: #020617;
+            --bg-card: #020c1b;
+            --bg-card-soft: #020817;
+            --border-soft: #1f2937;
+            --text-main: #e5e7eb;
+            --text-muted: #9ca3af;
+            --accent: #38bdf8;
+            --accent-soft: rgba(56,189,248,0.2);
+            --danger: #f97373;
+            --danger-soft: rgba(248,113,113,0.15);
+            --unknown: #facc15;
+            --unknown-soft: rgba(250,204,21,0.12);
+            --ok: #4ade80;
+            --ok-soft: rgba(74,222,128,0.18);
+            --shadow-card: 0 18px 40px rgba(15,23,42,0.8);
+            --radius-card: 12px;
+            --radius-badge: 999px;
+            --radius-chip: 999px;
+            --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --font-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle at top, #0b1220 0, #020617 36%, #000 100%);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .page {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 24px 32px 40px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .brand-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            background: radial-gradient(circle at 30% 20%, #38bdf8 0, #0ea5e9 32%, #0f172a 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 18px;
+            box-shadow: 0 12px 30px rgba(8,47,73,0.8);
+        }
+
+        .brand-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .brand-title {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .meta-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .meta-pill {
+            padding: 3px 10px;
+            border-radius: var(--radius-chip);
+            border: 1px solid #1e293b;
+            background: rgba(15,23,42,0.9);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .meta-pill-label {
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            color: #64748b;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .nav-link {
+            font-size: 13px;
+            padding: 7px 14px;
+            border-radius: var(--radius-chip);
+            color: var(--text-muted);
+            border: 1px solid transparent;
+        }
+
+        .nav-link.active {
+            background: rgba(15,23,42,0.95);
+            border-color: #1f2937;
+            color: var(--text-main);
+            box-shadow: 0 12px 30px rgba(15,23,42,0.9);
+        }
+
+        .nav-link span {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #6b7280;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 26px;
+        }
+
+        @media (max-width: 1100px) {
+            .grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page {
+                padding: 16px 16px 24px;
+            }
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .meta-right {
+                align-items: flex-start;
+            }
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: linear-gradient(145deg, #020617 0, #020c1b 50%, #020617 100%);
+            border-radius: var(--radius-card);
+            border: 1px solid var(--border-soft);
+            box-shadow: var(--shadow-card);
+            padding: 16px 16px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .card-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .status-pill {
+            padding: 2px 10px;
+            border-radius: var(--radius-badge);
+            font-size: 11px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid #1f2937;
+        }
+
+        .status-pill.ok {
+            color: var(--ok);
+            background: var(--ok-soft);
+            border-color: rgba(74,222,128,0.6);
+        }
+
+        .status-pill.error {
+            color: var(--danger);
+            background: var(--danger-soft);
+            border-color: rgba(248,113,113,0.6);
+        }
+
+        .status-pill.unknown {
+            color: var(--unknown);
+            background: var(--unknown-soft);
+            border-color: rgba(250,204,21,0.5);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: currentColor;
+        }
+
+        dl.meta {
+            margin: 0;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 2px 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        dl.meta dt {
+            opacity: 0.7;
+        }
+
+        dl.meta dd {
+            margin: 0;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-body {
+            font-size: 11px;
+        }
+
+        .card-section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .log-preview {
+            background: radial-gradient(circle at top left, #020617 0, #020617 32%, #020617 100%);
+            border-radius: 8px;
+            border: 1px solid #111827;
+            padding: 6px 8px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            line-height: 1.4;
+            color: #cbd5f5;
+            max-height: 165px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .log-footer {
+            margin-top: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .log-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chip-link {
+            padding: 3px 9px;
+            border-radius: var(--radius-chip);
+            border: 1px solid rgba(148,163,184,0.35);
+            font-size: 10px;
+            color: #e5e7eb;
+            background: rgba(15,23,42,0.8);
+        }
+
+        .chip-link:hover {
+            text-decoration: none;
+            border-color: rgba(148,163,184,0.7);
+            background: rgba(15,23,42,0.95);
+        }
+
+        .chip-secondary {
+            border: 1px dashed rgba(148,163,184,0.4);
+            background: rgba(15,23,42,0.6);
+            color: #9ca3af;
+        }
+
+        .chip-secondary:hover {
+            border-style: solid;
+            color: #e5e7eb;
+        }
+
+        .table-card {
+            background: linear-gradient(135deg, #020617 0, #020617 42%, #000 100%);
+            border-radius: var(--radius-card);
+            border: 1px solid var(--border-soft);
+            box-shadow: var(--shadow-card);
+            padding: 14px 16px 10px;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .table-title {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .table-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        thead {
+            background: rgba(15,23,42,0.9);
+        }
+
+        th, td {
+            padding: 6px 8px;
+            text-align: left;
+        }
+
+        th {
+            font-weight: 500;
+            color: #9ca3af;
+            border-bottom: 1px solid #111827;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            font-size: 10px;
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(15,23,42,0.6);
+        }
+
+        tbody tr:nth-child(odd) {
+            background: rgba(15,23,42,0.3);
+        }
+
+        tbody tr:hover {
+            background: rgba(30,64,175,0.35);
+        }
+
+        td {
+            border-bottom: 1px solid #020617;
+            color: #e5e7eb;
+        }
+
+        td.muted {
+            color: var(--text-muted);
+        }
+
+        .svc-status-pill {
+            padding: 2px 8px;
+            border-radius: var(--radius-chip);
+            font-size: 10px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            border: 1px solid #1f2937;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .svc-status-pill.ok {
+            color: var(--ok);
+            background: rgba(22,101,52,0.4);
+            border-color: rgba(74,222,128,0.7);
+        }
+
+        .svc-status-pill.error {
+            color: var(--danger);
+            background: rgba(127,29,29,0.5);
+            border-color: rgba(248,113,113,0.8);
+        }
+
+        .svc-status-pill.unknown {
+            color: var(--unknown);
+            background: rgba(120,53,15,0.5);
+            border-color: rgba(250,204,21,0.7);
+        }
+
+        .svc-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: currentColor;
+        }
+
+        .svc-job {
+            font-weight: 500;
+        }
+
+        .svc-job small {
+            display: block;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .svc-meta-note {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- Header / brand -->
+    <header>
+        <div class="brand-left">
+            <div class="brand-logo">Br</div>
+            <div class="brand-meta">
+                <div class="brand-title">{{ brand_name }} – backup-dashboard</div>
+                <div class="brand-sub">
+                    Host: {{ host_name }} · Repo: {{ repo_label }}
+                </div>
+            </div>
+        </div>
+        <div class="meta-right">
+            <div class="meta-pill">
+                <span class="meta-pill-label">Generated</span>
+                <span>
+                    {% if generated_at %}
+                        {{ generated_at.strftime('%Y-%m-%d %H:%M:%S %z') }}
+                    {% else %}
+                        n/a
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Nav -->
+    <nav>
+        <a href="{{ url_for('index') }}" class="nav-link active">
+            <div>Dashboard</div>
+            <span>Overview</span>
+        </a>
+        <a href="{{ url_for('browse') }}" class="nav-link">        
+            <div>Browse snapshots</div>
+            <span>Log history</span>
+        </a>
+    </nav>
+
+    <!-- Top cards -->
+    <section class="grid">
+
+        <!-- Warm tier (restic) / latest snapshot -->
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Warm tier (restic)</div>
+                    <div class="card-subtitle">Latest snapshot</div>
+                </div>
+                {% set wc_status = (warm_card.status or 'UNKNOWN') %}
+                {% set wc_status_upper = wc_status.upper() %}
+                {% if wc_status_upper == 'HEALTHY' %}
+                    <div class="status-pill ok">
+                        <span class="status-dot"></span>
+                        <span>Healthy</span>
+                    </div>
+                {% elif wc_status_upper == 'ERROR' %}
+                    <div class="status-pill error">
+                        <span class="status-dot"></span>
+                        <span>Snapshot error</span>
+                    </div>
+                {% else %}
+                    <div class="status-pill unknown">
+                        <span class="status-dot"></span>
+                        <span>Unknown</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="card-body">
+                {% if warm_card.latest_snapshot %}
+                    {% set snap = warm_card.latest_snapshot %}
+                    <dl class="meta">
+                        <dt>ID</dt>
+                        <dd>{{ snap.id }}</dd>
+
+                        <dt>Time</dt>
+                        <dd>
+                            {% if snap.time %}
+                                {{ snap.time.strftime('%Y-%m-%dT%H:%M:%S%z') }}
+                            {% else %}
+                                n/a
+                            {% endif %}
+                        </dd>
+
+                        <dt>Path</dt>
+                        <dd>/mnt/backup_sync/warm_tier</dd>
+                    </dl>
+
+                    {% if snap.stats_lines %}
+                        <div style="margin-top:8px;">
+                            <div class="card-section-title">Stats</div>
+                            <div class="log-preview">
+                                {{ snap.stats_lines | join('\n') }}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="log-preview">
+                        {{ warm_card.error or 'No snapshot information available.' }}
+                    </div>
+                {% endif %}
+
+                <div class="log-footer">
+                    <span>Source: /mnt/backup_sync/warm_tier</span>
+                    <div class="log-actions">
+                        <a class="chip-link" href="{{ url_for('browse', job='warm_daily') }}">
+                            View history
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Daily warm backup summary -->
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Daily warm backup</div>
+                    <div class="card-subtitle">
+                        {% if warm_daily and warm_daily.path %}
+                            {{ warm_daily.path }}
+                        {% else %}
+                            no log
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% set dw_status = (warm_daily.parsed.status if warm_daily and warm_daily.parsed is defined else 'UNKNOWN') %}
+                {% set dw_status_upper = dw_status.upper() %}
+                {% if dw_status_upper == 'HEALTHY' %}
+                    <div class="status-pill ok">
+                        <span class="status-dot"></span>
+                        <span>OK</span>
+                    </div>
+                {% elif dw_status_upper == 'ERROR' %}
+                    <div class="status-pill error">
+                        <span class="status-dot"></span>
+                        <span>Error</span>
+                    </div>
+                {% else %}
+                    <div class="status-pill unknown">
+                        <span class="status-dot"></span>
+                        <span>Unknown</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="card-body">
+                <dl class="meta" style="margin-bottom:8px;">
+                    <dt>Age</dt>
+                    <dd>
+                        {% if warm_daily %}
+                            {{ warm_daily.age_str }}
+                        {% else %}
+                            n/a
+                        {% endif %}
+                    </dd>
+                    <dt>Duration</dt>
+                    <dd>
+                        {% if warm_daily and warm_daily.parsed.duration %}
+                            {{ warm_daily.parsed.duration }}
+                        {% else %}
+                            n/a
+                        {% endif %}
+                    </dd>
+                </dl>
+
+                <div class="card-section-title">Log preview</div>
+                <div class="log-preview">
+                    {% if warm_daily and warm_daily.preview %}
+                        {{ warm_daily.preview }}
+                    {% else %}
+                        No daily backup log found.
+                    {% endif %}
+                </div>
+
+                <div class="log-footer">
+                    <span>
+                        {% if warm_daily and warm_daily.path %}
+                            {{ warm_daily.path | replace('/srv/restic/logs/','') }}
+                        {% else %}
+                            no log
+                        {% endif %}
+                    </span>
+                    <div class="log-actions">
+                        <a class="chip-link" href="{{ url_for('browse', job='warm_daily') }}">
+                            View full log
+                        </a>
+                        <a class="chip-link chip-secondary" href="{{ url_for('browse') }}">
+                            All logs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Cold tier – Backups -->
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Cold tier – Backups</div>
+                    <div class="card-subtitle">
+                        {% if cold_backups and cold_backups.path %}
+                            {{ cold_backups.path }}
+                        {% else %}
+                            no log
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% set cb_status = (cold_backups.parsed.status if cold_backups and cold_backups.parsed is defined else 'UNKNOWN') %}
+                {% set cb_status_upper = cb_status.upper() %}
+                {% if cb_status_upper == 'HEALTHY' %}
+                    <div class="status-pill ok">
+                        <span class="status-dot"></span>
+                        <span>OK</span>
+                    </div>
+                {% elif cb_status_upper == 'ERROR' %}
+                    <div class="status-pill error">
+                        <span class="status-dot"></span>
+                        <span>Error</span>
+                    </div>
+                {% else %}
+                    <div class="status-pill unknown">
+                        <span class="status-dot"></span>
+                        <span>Unknown</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="card-body">
+                <dl class="meta" style="margin-bottom:8px;">
+                    <dt>Age</dt>
+                    <dd>
+                        {% if cold_backups %}
+                            {{ cold_backups.age_str }}
+                        {% else %}
+                            n/a
+                        {% endif %}
+                    </dd>
+                    <dt>Duration</dt>
+                    <dd>
+                        {% if cold_backups and cold_backups.parsed.elapsed %}
+                            {{ cold_backups.parsed.elapsed }}
+                        {% else %}
+                            n/a
+                        {% endif %}
+                    </dd>
+                </dl>
+
+                <div class="card-section-title">Log preview</div>
+                <div class="log-preview">
+                    {% if cold_backups and cold_backups.preview %}
+                        {{ cold_backups.preview }}
+                    {% else %}
+                        No cold tier backup log found.
+                    {% endif %}
+                </div>
+
+                <div class="log-footer">
+                    <span>
+                        {% if cold_backups and cold_backups.path %}
+                            {{ cold_backups.path | replace('/srv/restic/logs/','') }}
+                        {% else %}
+                            no log
+                        {% endif %}
+                    </span>
+                    <div class="log-actions">
+                        <a class="chip-link" href="{{ url_for('browse', job='cold_backups') }}">
+                            View full log
+                        </a>
+                        <a class="chip-link chip-secondary" href="{{ url_for('browse', job='cold_backups') }}">
+                            History
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Cold tier – Photos_Archive -->
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Cold tier – Photos_Archive</div>
+                    <div class="card-subtitle">
+                        {% if cold_photos and cold_photos.path %}
+                            {{ cold_photos.path }}
+                        {% else %}
+                            no log
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% set cp_status = (cold_photos.parsed.status if cold_photos and cold_photos.parsed is defined else 'UNKNOWN') %}
+                {% set cp_status_upper = cp_status.upper() %}
+                {% if cp_status_upper == 'HEALTHY' %}
+                    <div class="status-pill ok">
+                        <span class="status-dot"></span>
+                        <span>OK</span>
+                    </div>
+                {% elif cp_status_upper == 'ERROR' %}
+                    <div class="status-pill error">
+                        <span class="status-dot"></span>
+                        <span>Error</span>
+                    </div>
+                {% else %}
+                    <div class="status-pill unknown">
+                        <span class="status-dot"></span>
+                        <span>Unknown</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="card-body">
+                <dl class="meta" style="margin-bottom:8px;">
+                    <dt>Age</dt>
+                    <dd>
+                        {% if cold_photos %}
+                            {{ cold_photos.age_str }}
+                        {% else %}
+                            n/a
+                        {% endif %}
+                    </dd>
+                    <dt>Duration</dt>
+                    <dd>
+                        {% if cold_photos and cold_photos.parsed.elapsed %}
+                            {{ cold_photos.parsed.elapsed }}
+                        {% else %}
+                            n/a
+                        {% endif %}
+                    </dd>
+                </dl>
+
+                <div class="card-section-title">Log preview</div>
+                <div class="log-preview">
+                    {% if cold_photos and cold_photos.preview %}
+                        {{ cold_photos.preview }}
+                    {% else %}
+                        No cold photo sync log found.
+                    {% endif %}
+                </div>
+
+                <div class="log-footer">
+                    <span>
+                        {% if cold_photos and cold_photos.path %}
+                            {{ cold_photos.path | replace('/srv/restic/logs/','') }}
+                        {% else %}
+                            no log
+                        {% endif %}
+                    </span>
+                    <div class="log-actions">
+                        <a class="chip-link" href="{{ url_for('browse', job='cold_photos') }}">
+                            View full log
+                        </a>
+                        <a class="chip-link chip-secondary" href="{{ url_for('browse', job='cold_photos') }}">
+                            History
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <!-- Service overview -->
+    <section class="table-card">
+        <div class="table-header">
+            <div>
+                <div class="table-title">Service & timer overview</div>
+                <div class="table-sub">
+                    Status and age reflect the last completed job run and timer metadata collected on the host.
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th style="width: 32%;">Job</th>
+                <th style="width: 18%;">Schedule (expected)</th>
+                <th style="width: 19%;">Last run (job)</th>
+                <th style="width: 11%;">Age</th>
+                <th style="width: 10%;">Duration</th>
+                <th style="width: 10%;">Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for svc in services %}
+                {% set svc_status = (svc.status or 'UNKNOWN') %}
+                {% set svc_status_upper = svc_status.upper() %}
+                <tr>
+                    <td class="svc-job">
+                        {{ svc.label }}
+                        <small>{{ svc.job_key }}</small>
+                    </td>
+                    <td class="muted">
+                        {{ svc.schedule }}
+                    </td>
+                    <td class="muted">
+                        {% if svc.last_run %}
+                            {{ svc.last_run.strftime('%Y-%m-%d %H:%M:%S') }}
+                        {% else %}
+                            n/a
+                        {% endif %}
+                    </td>
+                    <td class="muted">
+                        {{ svc.age_str }}
+                    </td>
+                    <td class="muted">
+                        {{ svc.duration }}
+                    </td>
+                    <td>
+                        {% if svc_status_upper == 'HEALTHY' %}
+                            <span class="svc-status-pill ok">
+                                <span class="svc-dot"></span> Healthy
+                            </span>
+                        {% elif svc_status_upper == 'ERROR' %}
+                            <span class="svc-status-pill error">
+                                <span class="svc-dot"></span> Error
+                            </span>
+                        {% else %}
+                            <span class="svc-status-pill unknown">
+                                <span class="svc-dot"></span> Unknown
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="svc-meta-note">
+            Note: timers shown here are informational only; scheduling is controlled on the host (systemd / cron).
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
+

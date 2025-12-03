@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Backup Dashboard - backup-dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    .page {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 24px 32px 48px;
+    }
+    h1 {
+      font-size: 26px;
+      margin: 0 0 4px;
+    }
+    .subline {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .top-bar {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .nav {
+      font-size: 14px;
+    }
+    .nav a {
+      margin-left: 16px;
+      color: #9ca3af;
+    }
+    .nav a.active {
+      color: #e5e7eb;
+      font-weight: 600;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .card {
+      background: radial-gradient(circle at top left, #0f172a, #020617);
+      border-radius: 12px;
+      padding: 16px 18px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.6);
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      margin-left: 8px;
+    }
+    .badge-healthy {
+      background: rgba(22, 163, 74, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(22, 163, 74, 0.7);
+    }
+    .badge-warning {
+      background: rgba(234, 179, 8, 0.15);
+      color: #facc15;
+      border: 1px solid rgba(234, 179, 8, 0.7);
+    }
+    .badge-error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.7);
+    }
+    .section-title {
+      margin-top: 32px;
+      margin-bottom: 8px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      text-align: left;
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+    }
+    th {
+      background: rgba(15, 23, 42, 0.85);
+      font-weight: 600;
+      color: #9ca3af;
+      position: sticky;
+      top: 0;
+    }
+    tr:nth-child(even) td {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    tr:nth-child(odd) td {
+      background: rgba(15, 23, 42, 0.2);
+    }
+    .snippet-ok {
+      margin-top: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: rgba(22, 163, 74, 0.12);
+      border: 1px solid rgba(22, 163, 74, 0.5);
+      color: #bbf7d0;
+      white-space: pre-wrap;
+    }
+    .snippet-error {
+      margin-top: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.6);
+      color: #fecaca;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="top-bar">
+    <div>
+      <h1>Backup Dashboard - backup-dashboard</h1>
+      <div class="subline">
+        Host: {{ host }} · Repo: {{ repo or "RESTIC_REPOSITORY not set" }} ·
+        Generated: {{ generated_at }}
+      </div>
+    </div>
+    <div class="nav">
+      <a href="/" class="active">Dashboard</a>
+      <a href="/browse">Browse snapshots</a>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Warm tier card -->
+    <div class="card">
+      <h2>
+        Warm tier (restic)
+        {% if warm_card_status == "Healthy" %}
+          <span class="badge badge-healthy">Healthy</span>
+        {% elif warm_card_status == "Warning" %}
+          <span class="badge badge-warning">Warning</span>
+        {% else %}
+          <span class="badge badge-error">Error</span>
+        {% endif %}
+      </h2>
+
+      <strong>Latest snapshot</strong><br />
+      {% if latest_snapshot %}
+        ID: {{ latest_snapshot.short_id or latest_snapshot.id[:8] }}<br />
+        Time: {{ latest_snapshot.time }}<br />
+        Host: {{ latest_snapshot.hostname }}<br />
+        Paths:
+        {% for p in latest_snapshot.paths %}
+          {{ p }}{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      {% else %}
+        No snapshot information (check backup_status.json).
+      {% endif %}
+
+      <br /><br />
+      <strong>Daily backup</strong><br />
+      Status: {{ restic_daily.status }} (age: {{ restic_daily.age }})<br />
+      Log: {{ restic_daily.log_path }}
+
+      <br /><br />
+      <strong>Weekly check</strong><br />
+      Status: {{ restic_weekly.status }} (age: {{ restic_weekly.age }})<br />
+      Log: {{ restic_weekly.log_path }}
+
+      {% if restic_weekly.snippet %}
+        {% if restic_weekly.status == "error" %}
+          <div class="snippet-error">
+            {{ restic_weekly.snippet }}
+          </div>
+        {% else %}
+          <div class="snippet-ok">
+            {{ restic_weekly.snippet }}
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <!-- Daily warm backup summary -->
+    <div class="card">
+      <h2>Daily warm backup summary</h2>
+      {% if restic_daily.summary %}
+        {{ restic_daily.summary }}
+      {% else %}
+        No summary available from backup_status.json.
+      {% endif %}
+    </div>
+
+    <!-- Cold tier - Backups -->
+    <div class="card">
+      <h2>
+        Cold tier – Backups
+        {% if cold_backups.status == "error" %}
+          <span class="badge badge-error">Error</span>
+        {% elif cold_backups.status == "missing" %}
+          <span class="badge badge-warning">Missing</span>
+        {% else %}
+          <span class="badge badge-healthy">Healthy</span>
+        {% endif %}
+      </h2>
+      <strong>Last sync</strong><br />
+      Age: {{ cold_backups.age }}<br />
+      Log: {{ cold_backups.log_path }}<br /><br />
+      <strong>Summary</strong><br />
+      {{ cold_backups.summary or "No summary" }}
+    </div>
+
+    <!-- Cold tier - Photos_Archive -->
+    <div class="card">
+      <h2>
+        Cold tier – Photos_Archive
+        {% if cold_photos.status == "error" %}
+          <span class="badge badge-error">Error</span>
+        {% elif cold_photos.status == "missing" %}
+          <span class="badge badge-warning">Missing</span>
+        {% else %}
+          <span class="badge badge-healthy">Healthy</span>
+        {% endif %}
+      </h2>
+      <strong>Last sync</strong><br />
+      Age: {{ cold_photos.age }}<br />
+      Log: {{ cold_photos.log_path }}<br /><br />
+      <strong>Summary</strong><br />
+      {{ cold_photos.summary or "No summary" }}
+    </div>
+  </div>
+
+  <div class="section-title">Service & timer overview</div>
+  <table>
+    <thead>
+    <tr>
+      <th style="width: 22%;">Job</th>
+      <th style="width: 18%;">Schedule (expected)</th>
+      <th style="width: 26%;">Last run (job)</th>
+      <th style="width: 10%;">Age</th>
+      <th style="width: 9%;">Status</th>
+      <th style="width: 7%;">Timer active</th>
+      <th style="width: 8%;">Timer next</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for row in service_rows %}
+      <tr>
+        <td>{{ row.job }}</td>
+        <td>{{ row.schedule }}</td>
+        <td>{{ row.last_run }}</td>
+        <td>{{ row.age }}</td>
+        <td>
+          {% if row.status == "Healthy" %}
+            <span class="badge badge-healthy">{{ row.status }}</span>
+          {% elif row.status == "Warning" %}
+            <span class="badge badge-warning">{{ row.status }}</span>
+          {% else %}
+            <span class="badge badge-error">{{ row.status }}</span>
+          {% endif %}
+        </td>
+        <td>{{ row.timer_active }}</td>
+        <td>{{ row.timer_next }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

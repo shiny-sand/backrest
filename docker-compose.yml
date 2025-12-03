@@ -1,0 +1,27 @@
+services:
+  backup-dashboard:
+    build: .
+    container_name: backup-dashboard
+    restart: unless-stopped
+
+    ports:
+      - "9899:8080"
+
+    environment:
+      RESTIC_REPOSITORY: "rclone:Crypt_QNAP01:"
+      RESTIC_PASSWORD_FILE: /srv/restic/secrets/restic_password
+      RCLONE_CONFIG: /srv/restic/config/rclone.conf
+      STATUS_JSON: /srv/restic/logs/backup_status.json
+      RESTORE_ROOT: /restore/dashboard_restores
+      TZ: Europe/Copenhagen
+
+    volumes:
+      - /srv/restic/secrets:/srv/restic/secrets:ro
+      - /srv/restic/config:/srv/restic/config          # RW so rclone can update tokens
+      - /srv/restic/cache:/srv/restic/cache
+      - /srv/restic/tmp:/srv/restic/tmp
+      - /srv/restic/logs:/srv/restic/logs:ro
+      - /restore/dashboard_restores:/restore/dashboard_restores
+      # Use *host* restic/rclone binaries (known good versions)
+      - /usr/bin/restic:/usr/local/bin/restic:ro
+      - /usr/bin/rclone:/usr/local/bin/rclone:ro

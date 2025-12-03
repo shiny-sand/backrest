@@ -1,0 +1,608 @@
+import os
+import json
+import subprocess
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
+
+from flask import Flask, render_template, request
+
+app = Flask(__name__)
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+RESTIC_REPOSITORY = os.environ.get("RESTIC_REPOSITORY", "").strip()
+STATUS_JSON_PATH = os.environ.get("STATUS_JSON", "/srv/restic/logs/backup_status.json")
+RESTORE_ROOT = os.environ.get("RESTORE_ROOT", "/restore/dashboard_restores")
+TZ_NAME = os.environ.get("TZ", "Europe/Copenhagen")
+
+# Display-only schedule labels
+JOB_SCHEDULES = {
+    "warm_daily": "Daily @ 02:00",
+    "warm_weekly": "Weekly Sun @ 04:30",
+    "cold_backups": "Daily @ 03:00",
+    "cold_photos": "Daily @ 03:30",
+}
+
+# Map systemd timers -> job keys
+TIMER_JOB_MAP = {
+    "restic-daily-backup.timer": "warm_daily",
+    "restic-weekly-check.timer": "warm_weekly",
+    "rclone-cold-backups.timer": "cold_backups",
+    "rclone-cold-photos.timer": "cold_photos",
+}
+
+# ---------------------------------------------------------------------------
+# Time helpers
+# ---------------------------------------------------------------------------
+
+
+def now_utc() -> datetime:
+    """
+    Return naive UTC datetime.
+
+    We keep everything naive to avoid 'offset-naive and offset-aware'
+    subtraction errors, since backup_status.json timestamps are naive.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def parse_iso(dt_str: Optional[str]) -> Optional[datetime]:
+    if not dt_str:
+        return None
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        # Normalize to naive UTC if timezone info is present
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
+    except Exception:
+        return None
+
+
+def format_age(dt: Optional[datetime]) -> str:
+    if dt is None:
+        return "n/a"
+
+    # Ensure dt is naive UTC
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+    delta = now_utc() - dt
+    total_minutes = int(delta.total_seconds() // 60)
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    if hours <= 0:
+        return f"{minutes}m ago"
+    return f"{hours}h {minutes}m ago"
+
+
+# ---------------------------------------------------------------------------
+# Size helpers
+# ---------------------------------------------------------------------------
+
+
+def format_bytes(num: int) -> str:
+    """Return a human-readable size string for bytes."""
+    units = ["B", "KiB", "MiB", "GiB", "TiB"]
+    value = float(num)
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(value)} {unit}"
+            return f"{value:.1f} {unit}"
+        value /= 1024.0
+    return f"{value:.1f} TiB"
+
+
+# ---------------------------------------------------------------------------
+# restic CLI helpers
+# ---------------------------------------------------------------------------
+
+
+def _restic_env() -> Dict[str, str]:
+    env = os.environ.copy()
+    if RESTIC_REPOSITORY:
+        env.setdefault("RESTIC_REPOSITORY", RESTIC_REPOSITORY)
+    return env
+
+
+def _normalize_error(err: str) -> str:
+    err = (err or "").strip()
+    if not err:
+        return "Unknown restic error"
+
+    # Collapse key-load spam into something readable
+    if "Load(<key/" in err and "does not exist" in err:
+        return (
+            "restic reported a repository key error "
+            "(Load(<key/...> does not exist)). "
+            "If 'restic check' on the host is clean, "
+            "treat this as a transient/diagnostic issue."
+        )
+
+    lines = err.splitlines()
+    if len(lines) > 8:
+        return "\n".join(lines[:8]) + "\n..."
+    return err
+
+
+def run_restic_text(args: List[str], timeout: int = 600) -> Tuple[bool, str]:
+    """
+    Run restic and return (ok, text_or_error).
+    Uses RESTIC_REPOSITORY and passes through env.
+    """
+    base_cmd = ["restic", "--no-cache"]
+    if RESTIC_REPOSITORY:
+        base_cmd += ["-r", RESTIC_REPOSITORY]
+
+    cmd = base_cmd + args
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            env=_restic_env(),
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return False, _normalize_error(f"Exception while running {' '.join(cmd)}: {exc}")
+
+    if proc.returncode != 0:
+        err_text = (proc.stderr or "") + (proc.stdout or "")
+        return False, _normalize_error(err_text)
+
+    return True, proc.stdout
+
+
+def run_restic_json(args: List[str], timeout: int = 600) -> Tuple[bool, Any]:
+    """
+    For commands that emit a single JSON document (e.g. snapshots --json).
+    """
+    ok, out = run_restic_text(args + ["--json"], timeout=timeout)
+    if not ok:
+        return False, out
+    try:
+        data = json.loads(out)
+    except json.JSONDecodeError as exc:
+        snippet = out[:4000]
+        return False, _normalize_error(
+            f"Failed to parse restic JSON: {exc}\nRaw output:\n{snippet}"
+        )
+    return True, data
+
+
+# ---------------------------------------------------------------------------
+# backup_status.json handling
+# ---------------------------------------------------------------------------
+
+
+def load_status() -> Dict[str, Any]:
+    if not STATUS_JSON_PATH or not os.path.exists(STATUS_JSON_PATH):
+        return {}
+    try:
+        with open(STATUS_JSON_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def classify_summary(summary: str, base_status: str) -> Tuple[str, str]:
+    """
+    Decide final status and a short snippet based on a log summary.
+
+    * If 'no errors were found' appears, force status 'ok'.
+    * Otherwise, treat 'fatal', 'failed', 'error:' etc as error.
+    """
+    if not summary:
+        return base_status or "missing", ""
+
+    summary_lower = summary.lower()
+
+    # Explicit happy path from restic check
+    if "no errors were found" in summary_lower:
+        return "ok", "no errors were found"
+
+    # Strong error signals
+    error_tokens = ["fatal:", "failed", "error:", " error ", "panic:", "exit code:   1"]
+    if any(tok in summary_lower for tok in error_tokens):
+        lines = [ln for ln in summary.splitlines() if ln.strip()]
+        snippet = "\n".join(lines[:4]) if lines else "error detected in log summary"
+        return "error", snippet
+
+    # Otherwise keep collector's status
+    return base_status or "ok", ""
+
+
+def build_dashboard_context() -> Dict[str, Any]:
+    status = load_status()
+
+    host = status.get("host") or "unknown-host"
+    restic_block = status.get("restic") or {}
+    cold_block = status.get("cold_rclone") or {}
+    timers = status.get("systemd_timers") or {}
+
+    # Warm tier jobs
+    daily = restic_block.get("daily_backup") or {}
+    weekly = restic_block.get("weekly_check") or {}
+
+    latest_snapshot = restic_block.get("latest_snapshot")
+
+    # Classify daily + weekly
+    daily_status_raw = daily.get("status", "missing")
+    daily_summary = daily.get("summary", "") or ""
+    daily_status, daily_snippet = classify_summary(daily_summary, daily_status_raw)
+    daily_mtime = parse_iso(daily.get("last_mtime"))
+
+    weekly_status_raw = weekly.get("status", "missing")
+    weekly_summary = weekly.get("summary", "") or ""
+    weekly_status, weekly_snippet = classify_summary(weekly_summary, weekly_status_raw)
+    weekly_mtime = parse_iso(weekly.get("last_mtime"))
+
+    # Cold tier jobs
+    cold_backups = cold_block.get("backups") or {}
+    cold_photos = cold_block.get("photos_archive") or {}
+
+    cold_backups_status, cold_backups_snippet = classify_summary(
+        cold_backups.get("summary", "") or "",
+        cold_backups.get("status", "missing"),
+    )
+    cold_backups_mtime = parse_iso(cold_backups.get("last_mtime"))
+
+    cold_photos_status, cold_photos_snippet = classify_summary(
+        cold_photos.get("summary", "") or "",
+        cold_photos.get("status", "missing"),
+    )
+    cold_photos_mtime = parse_iso(cold_photos.get("last_mtime"))
+
+    # Warm card status aggregation
+    warm_statuses = {daily_status, weekly_status}
+    if "error" in warm_statuses:
+        warm_card_status = "Error"
+    elif "missing" in warm_statuses:
+        warm_card_status = "Warning"
+    else:
+        warm_card_status = "Healthy"
+
+    # Service / timer overview
+    def timer_info(job_key: str) -> Tuple[bool, Optional[str], Optional[str]]:
+        active = False
+        last = None
+        nxt = None
+        for t_name, mapped in TIMER_JOB_MAP.items():
+            if mapped != job_key:
+                continue
+            t = timers.get(t_name) or {}
+            if t.get("active"):
+                active = True
+            last = t.get("last")
+            nxt = t.get("next")
+        return active, last, nxt
+
+    service_rows: List[Dict[str, Any]] = []
+
+    def add_row(job_key: str, label: str, base_status: str, mtime: Optional[datetime]):
+        active, last_str, next_str = timer_info(job_key)
+
+        if last_str:
+            last_run = last_str
+        elif mtime is not None:
+            last_run = mtime.isoformat()
+        else:
+            last_run = "n/a"
+
+        age = format_age(mtime)
+
+        if base_status == "error":
+            display_status = "Error"
+        elif base_status in ("missing", "warning"):
+            display_status = "Warning"
+        else:
+            display_status = "Healthy"
+
+        service_rows.append(
+            {
+                "job": label,
+                "schedule": JOB_SCHEDULES.get(job_key, "n/a"),
+                "last_run": last_run,
+                "age": age,
+                "status": display_status,
+                "timer_active": "yes" if active else "no",
+                "timer_next": next_str or "n/a",
+            }
+        )
+
+    add_row("warm_daily", "Warm tier – daily backup", daily_status, daily_mtime)
+    add_row("warm_weekly", "Warm tier – weekly check", weekly_status, weekly_mtime)
+    add_row(
+        "cold_backups",
+        "Cold tier – Backups sync",
+        cold_backups_status,
+        cold_backups_mtime,
+    )
+    add_row(
+        "cold_photos",
+        "Cold tier – Photos_Archive sync",
+        cold_photos_status,
+        cold_photos_mtime,
+    )
+
+    return {
+        "host": host,
+        "repo": restic_block.get("repo") or RESTIC_REPOSITORY,
+        "generated_at": status.get("generated_at") or now_utc().isoformat(),
+        "latest_snapshot": latest_snapshot,
+        "warm_card_status": warm_card_status,
+        "restic_daily": {
+            "status": daily_status,
+            "age": format_age(daily_mtime),
+            "log_path": daily.get("log_path") or "n/a",
+            "summary": daily_summary,
+            "snippet": daily_snippet,
+        },
+        "restic_weekly": {
+            "status": weekly_status,
+            "age": format_age(weekly_mtime),
+            "log_path": weekly.get("log_path") or "n/a",
+            "summary": weekly_summary,
+            "snippet": weekly_snippet,
+        },
+        "cold_backups": {
+            "status": cold_backups_status,
+            "age": format_age(cold_backups_mtime),
+            "log_path": cold_backups.get("log_path") or "n/a",
+            "summary": cold_backups.get("summary") or "",
+            "snippet": cold_backups_snippet,
+        },
+        "cold_photos": {
+            "status": cold_photos_status,
+            "age": format_age(cold_photos_mtime),
+            "log_path": cold_photos.get("log_path") or "n/a",
+            "summary": cold_photos.get("summary") or "",
+            "snippet": cold_photos_snippet,
+        },
+        "service_rows": service_rows,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Snapshot browsing
+# ---------------------------------------------------------------------------
+
+
+def load_all_snapshots() -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
+    ok, data = run_restic_json(["snapshots"])
+    if not ok:
+        return None, str(data)
+
+    if not isinstance(data, list):
+        return None, "Unexpected restic JSON format for snapshots"
+
+    snapshots: List[Dict[str, Any]] = []
+    for s in data:
+        snapshots.append(
+            {
+                "id": s.get("short_id") or s.get("id", "")[:8],
+                "full_id": s.get("id"),
+                "time": s.get("time"),
+                "host": s.get("hostname") or s.get("host"),
+                "paths": ", ".join(s.get("paths", [])),
+            }
+        )
+    snapshots.sort(key=lambda x: x["time"] or "", reverse=True)
+    return snapshots, None
+
+
+def load_snapshot_path(
+    snapshot_id: str,
+    path: str,
+) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
+    """
+    Use `restic ls --json` to list a path inside a snapshot.
+
+    restic emits one JSON object per line (NDJSON) for `ls`, but different
+    versions can either nest the node under 'node' or put the fields at the
+    top level. We support both shapes.
+    """
+    ok, out = run_restic_text(["ls", snapshot_id, path, "--json"])
+    if not ok:
+        # 'out' already contains a normalized error string
+        return None, str(out)
+
+    entries: List[Dict[str, Any]] = []
+
+    for line in out.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError as exc:
+            return None, (
+                f"Failed to parse restic ls JSON line: {exc}\n"
+                f"Line snippet: {line[:400]}"
+            )
+
+        if item.get("struct_type") != "node":
+            continue
+
+        # Support both formats:
+        # 1) {"struct_type":"node","node":{...}}
+        # 2) {"struct_type":"node","name":"...","path":"..."}
+        if isinstance(item.get("node"), dict) and item.get("node"):
+            node = item["node"]
+        else:
+            node = item
+
+        node_type = node.get("type", "?")
+        node_name = node.get("name", "")
+        node_path = node.get("path", "")
+
+        raw_size = node.get("size", 0) or 0
+        if node_type == "dir":
+            size_val: Optional[int] = None
+            size_human = "–"
+        else:
+            size_val = int(raw_size)
+            size_human = format_bytes(size_val)
+
+        entries.append(
+            {
+                "type": node_type,
+                "name": node_name,
+                "path": node_path,
+                "size": size_val,
+                "size_human": size_human,
+            }
+        )
+
+    return entries, None
+
+
+def build_browse_context(
+    snapshot_id: str,
+    path: str,
+    restore_message: Optional[str] = None,
+    restore_error: Optional[str] = None,
+) -> Dict[str, Any]:
+    snapshots, snapshot_error = load_all_snapshots()
+
+    entries = None
+    path_error = None
+    if snapshot_id:
+        entries, path_error = load_snapshot_path(snapshot_id, path)
+
+    return {
+        "repo": RESTIC_REPOSITORY or ctx_repo_fallback(),
+        "snapshots": snapshots or [],
+        "snapshot_error": snapshot_error,
+        "selected_snapshot": snapshot_id,
+        "path": path,
+        "entries": entries,
+        "path_error": path_error,
+        "restore_message": restore_message,
+        "restore_error": restore_error,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Restore handling
+# ---------------------------------------------------------------------------
+
+
+def safe_folder_name(s: str) -> str:
+    """Convert a path or id into a safe folder component."""
+    keep = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+    return "".join(ch if ch in keep else "_" for ch in s) or "item"
+
+
+def perform_restore(snapshot_id: str, path: str) -> Tuple[bool, str, str]:
+    """
+    Run `restic restore` for a single file or directory.
+
+    Returns (ok, message, dest_dir).
+    """
+    # Create a unique destination under RESTORE_ROOT
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    base_name = os.path.basename(path.rstrip("/")) or "root"
+    folder = f"{ts}_{safe_folder_name(snapshot_id[:8])}_{safe_folder_name(base_name)}"
+    dest_dir = os.path.join(RESTORE_ROOT, folder)
+
+    try:
+        os.makedirs(dest_dir, exist_ok=True)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"Failed to create restore directory {dest_dir}: {exc}", dest_dir
+
+    args = [
+        "restore",
+        snapshot_id,
+        "--target",
+        dest_dir,
+        "--include",
+        path,
+    ]
+    ok, out = run_restic_text(args, timeout=3600)
+    if not ok:
+        return False, out, dest_dir
+
+    # Keep only a short tail of the output as a message
+    lines = [ln for ln in out.splitlines() if ln.strip()]
+    if len(lines) > 8:
+        snippet = "\n".join(lines[-8:])
+    else:
+        snippet = "\n".join(lines)
+    msg = (
+        f"Restore completed.\n"
+        f"Snapshot: {snapshot_id}\n"
+        f"Path: {path}\n"
+        f"Destination: {dest_dir}\n\n"
+        f"{snippet}"
+    )
+    return True, msg, dest_dir
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+
+@app.route("/")
+def index():
+    ctx = build_dashboard_context()
+    return render_template(
+        "index.html",
+        host=ctx["host"],
+        repo=ctx["repo"],
+        generated_at=ctx["generated_at"],
+        latest_snapshot=ctx["latest_snapshot"],
+        warm_card_status=ctx["warm_card_status"],
+        restic_daily=ctx["restic_daily"],
+        restic_weekly=ctx["restic_weekly"],
+        cold_backups=ctx["cold_backups"],
+        cold_photos=ctx["cold_photos"],
+        service_rows=ctx["service_rows"],
+    )
+
+
+def ctx_repo_fallback() -> str:
+    st = load_status()
+    restic_block = st.get("restic") or {}
+    return restic_block.get("repo") or RESTIC_REPOSITORY or "RESTIC_REPOSITORY not set"
+
+
+@app.route("/browse")
+def browse():
+    snapshot_id = request.args.get("snapshot", "").strip()
+    path = request.args.get("path", "").strip() or "/mnt/backup_sync/warm_tier"
+
+    ctx = build_browse_context(snapshot_id, path)
+    return render_template("browse.html", **ctx)
+
+
+@app.route("/restore", methods=["POST"])
+def restore():
+    snapshot_id = request.form.get("snapshot", "").strip()
+    path = request.form.get("path", "").strip()
+
+    restore_message = None
+    restore_error = None
+
+    if not snapshot_id or not path:
+        restore_error = "Missing snapshot id or path for restore."
+    else:
+        ok, msg, _dest = perform_restore(snapshot_id, path)
+        if ok:
+            restore_message = msg
+        else:
+            restore_error = msg
+
+    # After restore, re-render the same browse view so you can continue working
+    current_path = path or "/mnt/backup_sync/warm_tier"
+    ctx = build_browse_context(snapshot_id, current_path, restore_message, restore_error)
+    return render_template("browse.html", **ctx)
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
